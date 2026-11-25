@@ -51,17 +51,38 @@ P5D女角色裸体模组/
 
 > 移植版地址：<https://github.com/kaimeng114514/PSV-P5D-Asia-Recomp-port-PC>
 
-### PSV 实机 / PSV 模拟器
+### PSV 实机（已验证，2026-11-25）
 
-**尚未测试**，不保证可用。如需尝试，请自行按对应平台的模型替换方式（替换 `dance/player/p5/` 下同名 GMD）操作，
-并注意备份原文件。
+需要：已破解的 PSV（3.60–3.68）+ **rePatch** 插件 + 你合法持有的 P5D 亚洲版（PCSH10109）。
+
+**原理**：游戏从 `app0:/data/data.cpk` 加载全部模型；rePatch 可以把该文件整个替换成
+"原内容 + 追加本模组 4 个 GMD" 的 CPK，游戏代码不用改，**不需要 patched eboot / mod.cpk**。
+
+步骤：
+
+1. 准备一个**含本模组**的 `data.cpk`（在 PC 上用 CPK 工具把 `data/dance/player/p5/pc20*_07.GMD`
+   追加进原版 `data.cpk` 并改写目录表；PC 移植版启动器应用模组后的
+   `<游戏库>/decrypted/PCSH10109/app0/data/data.cpk` 就是这种文件，约 1.92 GB）；
+2. 用读卡器复制到：
+   ```
+   ux0:rePatch/PCSH10109/data/data.cpk
+   ```
+   （卡上留 ≥ 2 GB 空间；不需要 eboot.bin 或 mod.cpk）
+3. 启动游戏 → 换装界面选对应角色的**泳装** → 模型替换成功；
+4. 回滚：删除 `ux0:rePatch/PCSH10109` 整个目录即可（原版 data.cpk 未被修改）。
+
+> 注意：修改后的 `data.cpk` 含游戏数据，**只能个人使用，禁止上传分享**。
+>
+> 小 `mod.cpk` 方案（2.2 MB）在实机未走通：需要 FAGDec 格式的 patched eboot，
+> 而普通 dump（MaiDump 风格解密 eboot）在 3.65 上会 `C2-12828-1` 崩溃。
+> PSV 模拟器（Vita3K）未测试。
 
 ---
 
 ## 兼容性说明
 
-- ✅ 目前**只在 P5D PC 移植版上验证可用**（截图为该平台实机效果）；
-- ⚠️ **PSV 实机**与 **PSV 模拟器**（如 Vita3K）**尚未测试**；
+- ✅ **P5D PC 移植版**已验证可用（截图为该平台实机效果）；
+- ✅ **PSV 实机（3.60–3.68 + rePatch）**已验证可用（2026-11-25，data.cpk 替换法，见上）；
 - 模组只替换模型文件，不含游戏本体；请自备游戏本体。
 
 ---
