@@ -51,38 +51,51 @@ P5D女角色裸体模组/
 
 > 移植版地址：<https://github.com/kaimeng114514/PSV-P5D-Asia-Recomp-port-PC>
 
-### PSV 实机（已验证，2026-11-25）
+### PSV 实机（已验证，2026-11-26，小方案）
 
-需要：已破解的 PSV（3.60–3.68）+ **rePatch** 插件 + 你合法持有的 P5D 亚洲版（PCSH10109）。
+需要：已破解的 PSV（3.60–3.68）+ **rePatch** 插件 + 你合法持有的 P5D 亚洲版（PCSH10109 1.00）。
 
-**原理**：游戏从 `app0:/data/data.cpk` 加载全部模型；rePatch 可以把该文件整个替换成
-"原内容 + 追加本模组 4 个 GMD" 的 CPK，游戏代码不用改，**不需要 patched eboot / mod.cpk**。
+**小方案（推荐，约 5.4 MB）**：patched eboot + 2.2 MB `mod.cpk`，实机确认泳装模型替换成功。
 
-步骤：
+原理：游戏启动时按一张固定表依次挂载 `vita.cpk`、`data.cpk`；给 eboot 打补丁后，
+它在最前面多挂一个 `data/mod.cpk`（mod 优先），模型文件从 mod.cpk 读取。
+eboot 必须是 **FAGDec 格式解密 SELF**（rePatch 在 3.65 上可直接加载；普通 MaiDump 风格解密 eboot 会 `C2-12828-1` 崩溃）。
 
-1. 准备一个**含本模组**的 `data.cpk`（在 PC 上用 CPK 工具把 `data/dance/player/p5/pc20*_07.GMD`
-   追加进原版 `data.cpk` 并改写目录表；PC 移植版启动器应用模组后的
-   `<游戏库>/decrypted/PCSH10109/app0/data/data.cpk` 就是这种文件，约 1.92 GB）；
-2. 用读卡器复制到：
-   ```
-   ux0:rePatch/PCSH10109/data/data.cpk
-   ```
-   （卡上留 ≥ 2 GB 空间；不需要 eboot.bin 或 mod.cpk）
-3. 启动游戏 → 换装界面选对应角色的**泳装** → 模型替换成功；
-4. 回滚：删除 `ux0:rePatch/PCSH10109` 整个目录即可（原版 data.cpk 未被修改）。
+需要的两个文件（本仓库不附带游戏数据，需自行生成）：
 
-> 注意：修改后的 `data.cpk` 含游戏数据，**只能个人使用，禁止上传分享**。
->
-> 小 `mod.cpk` 方案（2.2 MB）在实机未走通：需要 FAGDec 格式的 patched eboot，
-> 而普通 dump（MaiDump 风格解密 eboot）在 3.65 上会 `C2-12828-1` 崩溃。
-> PSV 模拟器（Vita3K）未测试。
+| 路径 | 说明 |
+|---|---|
+| `ux0:rePatch/PCSH10109/eboot.bin` | FAGDec 解密 SELF + 补丁（约 3.2 MB，固定基准哈希见下） |
+| `ux0:rePatch/PCSH10109/data/mod.cpk` | 只含本模组 4 个 GMD 的紧凑 CPK（2,231,049 字节） |
 
+已验证的自用文件哈希（仅供参考/校验，**不要分享文件**）：
+
+- `eboot.bin`：`CDD57C6B…764AE892`（3,208,858 字节）
+- `data/mod.cpk`：`E6D929AE…AD3764E`（2,231,049 字节）
+
+生成方法（PC + PSV）：
+
+1. PSV 上运行 **FAGDec** → "START DECRYPT(SELF)"，得到 `ux0:FAGDec/app/PCSH10109/eboot.bin` 与 `eboot.bin.elf`；
+2. 用 [P5D-PC 工具](#) `p5d_eboot_patch_elf.py` 给 `.elf` 打补丁（挂载计数 2→3、修改 CPK 表的**重定位条目**、写入 3 条目表）；
+3. 用 `vita-elf-inject`（PSVita-RE-Tools）把补丁后的 ELF 注入 FAGDec 的 `eboot.bin`；
+4. 用 `p5d_make_compact_cpk.py` 从原版 `data.cpk` + 本模组的 4 个 GMD 生成 `mod.cpk`；
+5. 两个文件放进 `ux0:rePatch/PCSH10109/`（`eboot.bin` 和 `data/mod.cpk`）→ 启动游戏 → 换装选泳装。
+
+关键坑（写出来免得白折腾）：
+
+- **不能直接改 eboot 里的 `movw/movt` 指令**：SELF 加载器会按重定位表把它们重写回原值，必须改**重定位条目**的目标；
+- `mod.cpk` 目录表必须"只保留需要的条目 + 按路径排序、行数=条目数"；把多余行清空会破坏 CRI 二分查找（挂载成功但查不到文件）；
+- 修改后的 eboot/mod.cpk 均含游戏数据，**只能个人使用，禁止上传分享**；回滚 = 删除 `ux0:rePatch/PCSH10109` 整个目录。
+
+**大方案（备用）**：直接替换 `ux0:rePatch/PCSH10109/data/data.cpk`（约 1.92 GB，不需要 eboot，同样实机验证可用，占空间大）。
+
+PSV 模拟器（Vita3K）未测试。
 ---
 
 ## 兼容性说明
 
 - ✅ **P5D PC 移植版**已验证可用（截图为该平台实机效果）；
-- ✅ **PSV 实机（3.60–3.68 + rePatch）**已验证可用（2026-11-25，data.cpk 替换法，见上）；
+- ✅ **PSV 实机（3.60–3.68 + rePatch）**已验证可用（2026-11-26，小 mod.cpk 方案，见上）；
 - 模组只替换模型文件，不含游戏本体；请自备游戏本体。
 
 ---
