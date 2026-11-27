@@ -95,47 +95,6 @@ kentente/userAllied，GPLv3）解密游戏 eboot → 解压各段重建 ELF → 
 - SFO 标题必须是 UTF-8（`vita-mksfoex` 在中文 Windows 会写 GBK），整体重建 SFO 会安装报 `0x80105A03`，需**原结构内原地替换**；
 - 界面中文用**1bpp 点阵位图**嵌入（不依赖系统字体）。
 
-### PSV 实机（备用：旧「小方案」，2026-11-26）
-
-需要：已破解的 PSV（3.60–3.68）+ **rePatch** 插件 + 你合法持有的 P5D 亚洲版（PCSH10109 1.00）。
-
-**小方案（推荐，约 5.4 MB）**：patched eboot + 2.2 MB `mod.cpk`，实机确认泳装模型替换成功。
-
-原理：游戏启动时按一张固定表依次挂载 `vita.cpk`、`data.cpk`；给 eboot 打补丁后，
-它在最前面多挂一个 `data/mod.cpk`（mod 优先），模型文件从 mod.cpk 读取。
-eboot 必须是 **FAGDec 格式解密 SELF**（rePatch 在 3.65 上可直接加载；普通 MaiDump 风格解密 eboot 会 `C2-12828-1` 崩溃）。
-
-需要的两个文件（本仓库不附带游戏数据，需自行生成）：
-
-| 路径 | 说明 |
-|---|---|
-| `ux0:rePatch/PCSH10109/eboot.bin` | FAGDec 解密 SELF + 补丁（约 3.2 MB，固定基准哈希见下） |
-| `ux0:rePatch/PCSH10109/data/mod.cpk` | 只含本模组 4 个 GMD 的紧凑 CPK（2,231,049 字节） |
-
-已验证的自用文件哈希（仅供参考/校验，**不要分享文件**）：
-
-- `eboot.bin`：`CDD57C6B…764AE892`（3,208,858 字节）
-- `data/mod.cpk`：`E6D929AE…AD3764E`（2,231,049 字节）
-
-生成方法（PC + PSV）：
-
-1. PSV 上运行 **FAGDec** → "START DECRYPT(SELF)"，得到 `ux0:FAGDec/app/PCSH10109/eboot.bin` 与 `eboot.bin.elf`；
-2. 用 [P5D-PC 工具](#) `p5d_eboot_patch_elf.py` 给 `.elf` 打补丁（挂载计数 2→3、修改 CPK 表的**重定位条目**、写入 3 条目表）；
-3. 用 `vita-elf-inject`（PSVita-RE-Tools）把补丁后的 ELF 注入 FAGDec 的 `eboot.bin`；
-4. 用 `p5d_make_compact_cpk.py` 从原版 `data.cpk` + 本模组的 4 个 GMD 生成 `mod.cpk`；
-5. 两个文件放进 `ux0:rePatch/PCSH10109/`（`eboot.bin` 和 `data/mod.cpk`）→ 启动游戏 → 换装选泳装。
-
-关键坑（写出来免得白折腾）：
-
-- **不能直接改 eboot 里的 `movw/movt` 指令**：SELF 加载器会按重定位表把它们重写回原值，必须改**重定位条目**的目标；
-- `mod.cpk` 目录表必须"只保留需要的条目 + 按路径排序、行数=条目数"；把多余行清空会破坏 CRI 二分查找（挂载成功但查不到文件）；
-- 修改后的 eboot/mod.cpk 均含游戏数据，**只能个人使用，禁止上传分享**；回滚 = 删除 `ux0:rePatch/PCSH10109` 整个目录。
-
-**大方案（备用）**：直接替换 `ux0:rePatch/PCSH10109/data/data.cpk`（约 1.92 GB，不需要 eboot，同样实机验证可用，占空间大）。
-
-PSV 模拟器（Vita3K）未测试。
----
-
 ## 源码与工具（代码/技术资料）
 
 本仓库公开模组相关的全部代码与技术资料（不含游戏数据）：
@@ -204,20 +163,3 @@ release/
 - 使用本模组造成的任何问题由使用者自行承担。
 
 ---
-
-## 更新日志
-
-### v30.0-1（2026-11-27）
-
-> **本版本没有对模组本体做任何更新**：模型、贴图与 `Data/` 下的文件与 v30.0 完全相同；
-> 仅新增 **PSV 实机支持**（单 VPK 全自动安装方案）。
-
-- 新增 **PSV 实机单 VPK 全自动方案**：安装 `P5DModInstaller.vpk` 并运行一次即可，
-  自动完成解密、补丁、注入与 mod.cpk 安装，无需电脑/FAGDec/手动复制；
-- 安装器 LiveArea 名称与界面中文化；
-- 新增 `code/`（安装器与解密模块源码、构建脚本）与 `docs/`（技术设计、使用说明、许可）。
-
-### v30.0
-
-- 首个发布版本：杏、真、春、双叶四位角色的泳装模型替换为裸体模型；
-- 已在 P5D PC 移植版验证可用。
