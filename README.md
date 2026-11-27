@@ -3,7 +3,7 @@
 **Persona 5 Dancing in Starlight (PCSH10109) 女角色裸体模组**：把游戏里四位女性角色的**泳装模型**替换为**裸体模型**，
 进入游戏后选择对应角色的**泳装**即可看到效果。
 
-> 作者：**凯梦** ｜ 版本：**v30.0** ｜ 适用版本：P5D 亚洲版（PCSH10109）
+> 作者：**凯梦** ｜ 版本：**v30.0-1**（模组本体 v30.0 + 新增 PSV 单 VPK 支持） ｜ 适用版本：P5D 亚洲版（PCSH10109）
 
 ---
 
@@ -22,8 +22,12 @@
 
 ## 下载
 
-到本仓库的 **[Releases](https://github.com/kaimeng114514/psv-p5d-female-nude-mod/releases)** 页面下载最新版本：
-`psv.p5d.female.nude.mod.rar`
+到本仓库的 **[Releases](https://github.com/kaimeng114514/psv-p5d-female-nude-mod/releases)** 页面下载：
+
+- **v30.0-1（最新）**：新增 **PSV 实机单 VPK 支持**；模组本体（模型/贴图/`Data/` 文件）与 v30.0 **完全相同，未做任何修改**；
+  - PC 移植版玩家：模组内容与 v30.0 相同，继续使用原有 `psv.p5d.female.nude.mod.rar` 即可；
+  - PSV 实机玩家：使用 `P5DModInstaller.vpk`（见下文"PSV 实机（推荐）"）。
+- **v30.0**：首个发布版本（模组本体）。
 
 解压后得到：
 
@@ -51,7 +55,47 @@ P5D女角色裸体模组/
 
 > 移植版地址：<https://github.com/kaimeng114514/PSV-P5D-Asia-Recomp-port-PC>
 
-### PSV 实机（已验证，2026-11-26，小方案）
+### PSV 实机（推荐：单 VPK 全自动方案，2026-11-27 实机验证）
+
+**玩家只需要安装一个 VPK、运行一次，即可完成全部安装**——不需要电脑、不需要 FAGDec、不需要手动复制文件。
+
+下载：本仓库 `release/P5DModInstaller.vpk`（1,085,310 字节）
+
+| 文件 | SHA256 |
+|---|---|
+| `P5DModInstaller.vpk` | `86FCC0F2F0144AA61F344E596E901AB2DA39C77DCA13BAEB444F293DC247413F` |
+
+前置条件（缺一不可）：
+
+1. PSV 已破解（HENkaku/taiHEN）；
+2. **rePatch 插件已启用**（`ur0:tai/config.txt` 的 `*KERNEL` 段含 `ur0:tai/repatch.skprx`）；
+3. 游戏 PCSH10109（P5D 亚洲版 1.00）已安装。
+
+安装步骤：
+
+1. 用 VitaShell 安装 `P5DModInstaller.vpk`（桌面显示中文名「P5D 模组安装器」）；
+2. 运行「P5D 模组安装器」，等待中文界面提示「安装完成！请启动游戏。」（首次会自动解密，约几十秒）；
+3. 启动游戏 → 换装选择泳装 → 模型已替换。
+
+之后：
+
+- **更换 MOD**：替换 `ux0:rePatch/PCSH10109/data/mod.cpk` 即可（无需再运行安装器）；
+- **还原原版**：删除 `ux0:rePatch/PCSH10109/eboot.bin` 与 `data/mod.cpk`；
+- **重装/更新游戏后**：再运行一次安装器。
+
+安装器内部流程（详见 `docs/`）：挂载游戏 → 找许可证 rif → 加载解密内核模块（FAGDec 的
+kentente/userAllied，GPLv3）解密游戏 eboot → 解压各段重建 ELF → 打 3-CPK 挂载补丁 →
+用 zlib 重压缩与 SHA256 摘要重建 decrypted SELF → 写入 rePatch → 复制内置 mod.cpk。
+
+技术要点（已写入 `docs/技术设计_单VPK方案.md`）：
+
+- 原版 eboot 的代码页在运行时**不能被写入**（写回原值也会崩），所以放弃"插件运行时拦截"，改为**在主机上现场生成 patched eboot**；
+- 解密内核模块需要 **UNSAFE SELF + authid 0x2808000000000000** 才能被 taiHEN 加载；
+- 解密缓冲不能放到 CDRAM/内核根分区（3.1MB 段会 `NO_FREE_PHYSICAL_PAGE`），需依次尝试多个内核内存分区；
+- SFO 标题必须是 UTF-8（`vita-mksfoex` 在中文 Windows 会写 GBK），整体重建 SFO 会安装报 `0x80105A03`，需**原结构内原地替换**；
+- 界面中文用**1bpp 点阵位图**嵌入（不依赖系统字体）。
+
+### PSV 实机（备用：旧「小方案」，2026-11-26）
 
 需要：已破解的 PSV（3.60–3.68）+ **rePatch** 插件 + 你合法持有的 P5D 亚洲版（PCSH10109 1.00）。
 
@@ -92,6 +136,35 @@ eboot 必须是 **FAGDec 格式解密 SELF**（rePatch 在 3.65 上可直接加�
 PSV 模拟器（Vita3K）未测试。
 ---
 
+## 源码与工具（代码/技术资料）
+
+本仓库公开模组相关的全部代码与技术资料（不含游戏数据）：
+
+```
+code/
+├── installer/               # PSV 端单 VPK 安装器源码（MIT）
+│   ├── src/                 # main.c / p5d_patch.c / p5d_inject.c / 中文字库 / debugScreen
+│   ├── zlib/                # zlib 压缩/解压源码
+│   ├── tools/gen_zh_font.ps1# 中文点阵生成脚本
+│   └── build_vita.bat       # VitaSDK 构建脚本
+└── fagdec/                  # 解密模块源码（PSVita-RE-Tools / FAGDec，GPLv3）
+    ├── src/kplugin/         # kentente（SceSblAuthMgr 解密，含多分区内存分配修复）
+    ├── src/uplugin/         # userAllied（用户层调用存根）
+    └── include/             # 接口头文件
+
+docs/
+├── 技术设计_单VPK方案.md     # 完整技术设计与踩坑记录
+├── 使用说明_单VPK版.md       # 玩家安装说明
+└── 来源与许可.txt            # 第三方组件来源与许可
+
+release/
+└── P5DModInstaller.vpk      # 构建产物（单 VPK 安装器）
+```
+
+> 解密模块 `kentente` / `userAllied` 来自开源项目
+> [PSVita-RE-Tools](https://github.com/TeamFAPS/PSVita-RE-Tools)（GPLv3）；
+> 本仓库保存的是为当前方案适配/修复后的版本。安装器本体为自制 MIT 代码。
+
 ## 兼容性说明
 
 - ✅ **P5D PC 移植版**已验证可用（截图为该平台实机效果）；
@@ -112,7 +185,7 @@ PSV 模拟器（Vita3K）未测试。
 
 ## 作者与授权
 
-- **作者**：本模组作者（以本仓库的提交记录与发布记录为准） · 首次发布：**v30.0（2026-11-21）**
+- **作者**：本模组作者（以本仓库的提交记录与发布记录为准） · 首次发布：**v30.0（2026-11-21）** · 当前发布：**v30.0-1（2026-11-27，新增 PSV 单 VPK 支持）**
 - **授权方式**：作者**不主张本模组原创部分的经济权利，不收取任何费用**；依著作权法**保留署名权**（表明作者身份的权利），**希望在转载、修改、再分发时保留原作者署名及本仓库原始链接**：
   <https://github.com/kaimeng114514/psv-p5d-female-nude-mod>
 - **权利归属**：
@@ -133,6 +206,16 @@ PSV 模拟器（Vita3K）未测试。
 ---
 
 ## 更新日志
+
+### v30.0-1（2026-11-27）
+
+> **本版本没有对模组本体做任何更新**：模型、贴图与 `Data/` 下的文件与 v30.0 完全相同；
+> 仅新增 **PSV 实机支持**（单 VPK 全自动安装方案）。
+
+- 新增 **PSV 实机单 VPK 全自动方案**：安装 `P5DModInstaller.vpk` 并运行一次即可，
+  自动完成解密、补丁、注入与 mod.cpk 安装，无需电脑/FAGDec/手动复制；
+- 安装器 LiveArea 名称与界面中文化；
+- 新增 `code/`（安装器与解密模块源码、构建脚本）与 `docs/`（技术设计、使用说明、许可）。
 
 ### v30.0
 
